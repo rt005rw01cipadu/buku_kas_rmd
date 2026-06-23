@@ -96,8 +96,10 @@ function initDefaults() {
 
   setValue("kasTanggal", today);
   setValue("rmdTanggal", today);
-  setValue("kasReportMonth", month);
-  setValue("rmdReportMonth", month);
+  setValue("kasReportStartMonth", month);
+  setValue("kasReportEndMonth", month);
+  setValue("rmdReportStartMonth", month);
+  setValue("rmdReportEndMonth", month);
 }
 
 function api(body) {
@@ -425,13 +427,36 @@ async function loadDashboardOnly() {
   } catch (err) {}
 }
 
+function getReportRange(moduleName) {
+  const prefix = moduleName === "RMD" ? "rmd" : "kas";
+  const startId = prefix + "ReportStartMonth";
+  const endId = prefix + "ReportEndMonth";
+  let startMonthKey = document.getElementById(startId).value || currentMonthKey();
+  let endMonthKey = document.getElementById(endId).value || startMonthKey;
+
+  if (startMonthKey > endMonthKey) {
+    const temp = startMonthKey;
+    startMonthKey = endMonthKey;
+    endMonthKey = temp;
+  }
+
+  setValue(startId, startMonthKey);
+  setValue(endId, endMonthKey);
+  return { startMonthKey: startMonthKey, endMonthKey: endMonthKey };
+}
+
 async function loadKasReport() {
-  const monthKey = document.getElementById("kasReportMonth").value || currentMonthKey();
+  const range = getReportRange("KAS");
   const btn = document.getElementById("btnLoadKasReport");
   setButtonLoading(btn, true, "Memuat...");
 
   try {
-    const res = await api({ action: "getKasReport", token: State.session.token, monthKey: monthKey });
+    const res = await api({
+      action: "getKasReport",
+      token: State.session.token,
+      startMonthKey: range.startMonthKey,
+      endMonthKey: range.endMonthKey
+    });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal memuat laporan KAS.", "error");
       return;
@@ -446,12 +471,17 @@ async function loadKasReport() {
 }
 
 async function loadRmdReport() {
-  const monthKey = document.getElementById("rmdReportMonth").value || currentMonthKey();
+  const range = getReportRange("RMD");
   const btn = document.getElementById("btnLoadRmdReport");
   setButtonLoading(btn, true, "Memuat...");
 
   try {
-    const res = await api({ action: "getRmdReport", token: State.session.token, monthKey: monthKey });
+    const res = await api({
+      action: "getRmdReport",
+      token: State.session.token,
+      startMonthKey: range.startMonthKey,
+      endMonthKey: range.endMonthKey
+    });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal memuat laporan RMD.", "error");
       return;
@@ -467,7 +497,7 @@ async function loadRmdReport() {
 
 function renderKasReport() {
   const r = State.kasReport || {};
-  setText("kasReportTitle", "Laporan KAS RT " + monthName(r.monthKey));
+  setText("kasReportTitle", "Laporan KAS RT " + reportPeriodLabel(r));
   setText("kasSaldoAwal", rupiah(r.saldo_awal_bulan || 0));
   setText("kasTotalMasuk", rupiah(r.total_masuk || 0));
   setText("kasTotalKeluar", rupiah(r.total_keluar || 0));
@@ -502,7 +532,7 @@ function renderKasReport() {
 
 function renderRmdReport() {
   const r = State.rmdReport || {};
-  setText("rmdReportTitle", "Laporan RMD " + monthName(r.monthKey));
+  setText("rmdReportTitle", "Laporan RMD " + reportPeriodLabel(r));
   setText("rmdSaldoAwal", rupiah(r.saldo_awal_bulan || 0));
   setText("rmdTotalMasuk", rupiah(r.total_masuk || 0));
   setText("rmdTotalKeluar", rupiah(r.total_keluar || 0));
@@ -747,7 +777,7 @@ function exportReportExcel(moduleName) {
   const btnId = moduleName === "RMD" ? "btnExportRmdExcel" : "btnExportKasExcel";
   const btn = document.getElementById(btnId);
 
-  if (!report || !report.monthKey) {
+  if (!isReportReady(report)) {
     showToast("Tampilkan laporan dulu sebelum export Excel.", "error");
     return;
   }
@@ -765,8 +795,8 @@ function exportReportExcel(moduleName) {
 
     const summaryRows = [
       [title],
-      ["Periode", monthName(report.monthKey)],
-      ["Saldo Awal Bulan", Number(report.saldo_awal_bulan || 0)],
+      ["Periode", reportPeriodLabel(report)],
+      ["Saldo Awal Periode", Number(report.saldo_awal_bulan || 0)],
       ["Total Masuk", Number(report.total_masuk || 0)],
       ["Total Keluar", Number(report.total_keluar || 0)],
       ["Saldo Akhir", Number(report.saldo_akhir || 0)],
@@ -795,7 +825,7 @@ function exportReportExcel(moduleName) {
     applyExcelNumberFormat(wsDetail, amountColumn + "2:" + amountColumn + Math.max(detailRows.length, 2), '"Rp" #,##0');
     XLSX.utils.book_append_sheet(wb, wsDetail, "Detail Transaksi");
 
-    const fileName = makeSafeFileName(getReportTitle(moduleName) + " " + report.monthKey) + ".xlsx";
+    const fileName = makeSafeFileName(getReportTitle(moduleName) + " " + reportPeriodFilePart(report)) + ".xlsx";
     XLSX.writeFile(wb, fileName);
     showToast("Export Excel berhasil dibuat.", "success");
   } catch (err) {
@@ -810,7 +840,7 @@ function exportReportPdf(moduleName) {
   const btnId = moduleName === "RMD" ? "btnExportRmdPdf" : "btnExportKasPdf";
   const btn = document.getElementById(btnId);
 
-  if (!report || !report.monthKey) {
+  if (!isReportReady(report)) {
     showToast("Tampilkan laporan dulu sebelum export PDF.", "error");
     return;
   }
@@ -827,7 +857,7 @@ function exportReportPdf(moduleName) {
     const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const title = getReportTitle(moduleName);
     const wilayah = cleanPdfText(State.settings.wilayah || "CIPADU - LARANGAN");
-    const periodLabel = monthName(report.monthKey);
+    const periodLabel = reportPeriodLabel(report);
     const pageWidth = doc.internal.pageSize.getWidth();
 
     doc.setFont("helvetica", "bold");
@@ -868,7 +898,7 @@ function exportReportPdf(moduleName) {
     const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 55;
     const summaryRows = [
       ["Periode", periodLabel],
-      ["Saldo Awal Bulan", formatPdfNumber(report.saldo_awal_bulan || 0)],
+      ["Saldo Awal Periode", formatPdfNumber(report.saldo_awal_bulan || 0)],
       ["Total Masuk", formatPdfNumber(report.total_masuk || 0)],
       ["Total Keluar", formatPdfNumber(report.total_keluar || 0)],
       ["Saldo Akhir", formatPdfNumber(report.saldo_akhir || 0)]
@@ -888,7 +918,7 @@ function exportReportPdf(moduleName) {
       margin: { left: (pageWidth - 126) / 2, right: (pageWidth - 126) / 2 }
     });
 
-    doc.save(getReportPdfFileName(moduleName));
+    doc.save(getReportPdfFileName(moduleName, report));
     showToast("Export PDF berhasil dibuat.", "success");
   } catch (err) {
     showToast("Gagal export PDF: " + err.message, "error");
@@ -926,8 +956,11 @@ function getReportTitle(moduleName) {
   return moduleName === "RMD" ? "LAPORAN RMD " + rtName : "LAPORAN KAS " + rtName;
 }
 
-function getReportPdfFileName(moduleName) {
-  return makeSafeFileName(getReportTitle(moduleName)) + ".pdf";
+function getReportPdfFileName(moduleName, report) {
+  if (!report || reportStartMonthKey(report) === reportEndMonthKey(report)) {
+    return makeSafeFileName(getReportTitle(moduleName)) + ".pdf";
+  }
+  return makeSafeFileName(getReportTitle(moduleName) + " " + reportPeriodFilePart(report)) + ".pdf";
 }
 
 function makeSafeFileName(value) {
@@ -990,6 +1023,31 @@ function currentMonthKey() {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   return y + "-" + m;
+}
+
+
+function isReportReady(report) {
+  return !!(report && (report.startMonthKey || report.monthKey));
+}
+
+function reportStartMonthKey(report) {
+  return report && (report.startMonthKey || report.monthKey) ? (report.startMonthKey || report.monthKey) : currentMonthKey();
+}
+
+function reportEndMonthKey(report) {
+  return report && (report.endMonthKey || report.monthKey) ? (report.endMonthKey || report.monthKey) : reportStartMonthKey(report);
+}
+
+function reportPeriodLabel(report) {
+  const start = reportStartMonthKey(report);
+  const end = reportEndMonthKey(report);
+  return start === end ? monthName(start) : monthName(start) + " s/d " + monthName(end);
+}
+
+function reportPeriodFilePart(report) {
+  const start = reportStartMonthKey(report);
+  const end = reportEndMonthKey(report);
+  return start === end ? start : start + " sd " + end;
 }
 
 function monthName(monthKey) {
