@@ -3,14 +3,11 @@ Buku KAS RT dan RMD
 Frontend statis untuk GitHub Pages.
 Ganti API_URL dengan URL Web App dari Google Apps Script.
 Created By ANDANG CHRISNANDI
-Updated Date 2026-07-08
+Updated Date 2026-06-23
 */
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxAngJqqSRn4IPQaMNF8IHCxYKfMDxzyI0w7CIUN8UU6X3ATT7xx3_pu45kxOSP3Adc/exec";
 const SESSION_KEY = "kas_rt_session_v2";
-
-// Permission default untuk pengunjung tanpa login (warga): hanya boleh melihat laporan.
-const GUEST_PERMISSIONS = { view: true, input: false, deleteTransaction: false, manageUsers: false };
 
 const State = {
   session: JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null"),
@@ -26,29 +23,19 @@ const State = {
 document.addEventListener("DOMContentLoaded", function () {
   bindEvents();
   initDefaults();
-  showApp();
-  loadInitialData();
+
+  if (State.session && State.session.token) {
+    showApp();
+    loadInitialData();
+  } else {
+    showLogin();
+  }
 });
 
 function bindEvents() {
   document.getElementById("loginForm").addEventListener("submit", function (event) {
     event.preventDefault();
     doLogin();
-  });
-
-  document.getElementById("btnOpenLogin").addEventListener("click", function () {
-    openLoginModal();
-  });
-  document.getElementById("btnCloseLogin").addEventListener("click", closeLoginModal);
-  document.getElementById("loginModal").addEventListener("click", function (event) {
-    if (event.target.id === "loginModal") {
-      closeLoginModal();
-    }
-  });
-  document.querySelectorAll("[data-open-login]").forEach(function (button) {
-    button.addEventListener("click", function () {
-      openLoginModal();
-    });
   });
 
   document.querySelectorAll("[data-page]").forEach(function (button) {
@@ -128,7 +115,7 @@ function api(body) {
     const timer = setTimeout(function () {
       cleanup();
       reject(new Error("timeout"));
-    }, 45000);
+    }, 35000);
 
     function cleanup() {
       clearTimeout(timer);
@@ -142,11 +129,9 @@ function api(body) {
     window[callbackName] = function (response) {
       cleanup();
       if (response && response.status === "error" && response.code === "SESSION_EXPIRED") {
-        handleAuthFailure_(response.message || "Sesi berakhir. Silakan login ulang.", true);
-        return;
-      }
-      if (response && response.status === "error" && response.code === "AUTH_REQUIRED") {
-        handleAuthFailure_(response.message || "Silakan login untuk melanjutkan.", false);
+        showToast(response.message || "Sesi berakhir. Silakan login ulang.", "error");
+        clearSession();
+        showLogin();
         return;
       }
       resolve(response);
@@ -161,33 +146,6 @@ function api(body) {
 
     document.body.appendChild(script);
   });
-}
-
-// Guard supaya kegagalan auth beruntun (mis. jaringan tidak stabil) tidak membuka
-// modal login berkali-kali atau memicu pemanggilan ulang bertumpuk.
-let authFailureHandling = false;
-
-function handleAuthFailure_(message, wasLoggedIn) {
-  if (authFailureHandling) {
-    return;
-  }
-  authFailureHandling = true;
-
-  showToast(message, "error");
-
-  if (wasLoggedIn) {
-    clearSession();
-    showApp();
-    // Aman dipanggil ulang: getInitialData adalah action publik, jadi ini akan
-    // sukses sebagai warga tanpa memicu SESSION_EXPIRED lagi.
-    loadInitialData().finally(function () {
-      authFailureHandling = false;
-    });
-  } else {
-    authFailureHandling = false;
-  }
-
-  openLoginModal();
 }
 
 async function doLogin() {
@@ -215,21 +173,9 @@ async function doLogin() {
       permissions: res.permissions
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(State.session));
-    document.getElementById("loginForm").reset();
     document.getElementById("loginError").style.display = "none";
-    closeLoginModal();
-    showToast("Berhasil login sebagai " + (res.user ? res.user.nama : username) + ".", "success");
     showApp();
-    // reset laporan yang sudah dimuat sebagai guest supaya ikut refresh dengan hak akses petugas
-    State.kasReport = null;
-    State.rmdReport = null;
     await loadInitialData();
-    if (State.activePage === "kasPage") {
-      await loadKasReport();
-    }
-    if (State.activePage === "rmdPage") {
-      await loadRmdReport();
-    }
   } catch (err) {
     showLoginError("Gagal terhubung: " + err.message);
   } finally {
@@ -240,18 +186,8 @@ async function doLogin() {
 function doLogout() {
   const token = State.session ? State.session.token : "";
   clearSession();
-  showToast("Anda sudah logout. Kembali ke mode warga.", "success");
-  showApp();
-  State.kasReport = null;
-  State.rmdReport = null;
-  loadInitialData().then(function () {
-    if (State.activePage === "kasPage") {
-      loadKasReport();
-    }
-    if (State.activePage === "rmdPage") {
-      loadRmdReport();
-    }
-  });
+  showLogin();
+  showToast("Anda sudah logout.", "success");
 
   if (token) {
     api({ action: "logout", token: token }).catch(function () {});
@@ -269,28 +205,16 @@ function showLoginError(message) {
   el.style.display = "block";
 }
 
-function openLoginModal() {
-  document.getElementById("loginError").style.display = "none";
-  document.getElementById("loginModal").classList.add("active");
-  const first = document.getElementById("loginUsername");
-  if (first) {
-    setTimeout(function () { first.focus(); }, 50);
-  }
-}
-
-function closeLoginModal() {
-  document.getElementById("loginModal").classList.remove("active");
+function showLogin() {
+  document.getElementById("loginPage").classList.add("active");
+  document.getElementById("appPage").classList.remove("active");
 }
 
 function showApp() {
+  document.getElementById("loginPage").classList.remove("active");
   document.getElementById("appPage").classList.add("active");
 
-  const isGuest = !(State.session && State.session.token);
-  const user = !isGuest ? State.session.user : null;
-
-  document.getElementById("guestPill").style.display = isGuest ? "flex" : "none";
-  document.getElementById("userPill").style.display = isGuest ? "none" : "flex";
-
+  const user = State.session ? State.session.user : null;
   setText("activeUserName", user ? user.nama : "-");
   setText("activeUserRole", user ? roleLabel(user.role) : "-");
   fillPetugas();
@@ -306,17 +230,11 @@ function fillPetugas() {
 }
 
 function applyPermissions() {
-  const isGuest = !(State.session && State.session.token);
-  const permissions = isGuest ? GUEST_PERMISSIONS : (State.session.permissions || {});
+  const permissions = State.session && State.session.permissions ? State.session.permissions : {};
 
   document.querySelectorAll("[data-permission]").forEach(function (el) {
     const key = el.dataset.permission;
     el.style.display = permissions[key] ? "" : "none";
-  });
-
-  // Banner ajakan login: hanya tampil untuk warga (belum login) pada fitur yang butuh permission tersebut.
-  document.querySelectorAll("[data-permission-guest]").forEach(function (el) {
-    el.style.display = isGuest ? "flex" : "none";
   });
 }
 
@@ -344,19 +262,16 @@ function goPage(pageId, skipLoad) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function sessionToken() {
-  return State.session && State.session.token ? State.session.token : "";
-}
-
 async function loadInitialData() {
-  const isGuest = !(State.session && State.session.token);
+  if (!State.session || !State.session.token) {
+    showLogin();
+    return;
+  }
 
   try {
-    // Tanpa token, backend harus memperlakukan ini sebagai warga (read-only) dan
-    // mengembalikan permissions: {view:true} saja. Lihat catatan kontrak API di app.js.
     const res = await api({
       action: "getInitialData",
-      token: sessionToken(),
+      token: State.session.token,
       monthKey: currentMonthKey()
     });
 
@@ -368,49 +283,21 @@ async function loadInitialData() {
     State.settings = res.settings || {};
     State.categories = res.categories || { MASUK: [], KELUAR: [] };
     State.dashboard = res.dashboard || {};
-
-    if (!isGuest) {
-      State.session.user = res.user || State.session.user;
-      State.session.permissions = res.permissions || State.session.permissions;
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(State.session));
-    }
+    State.session.user = res.user || State.session.user;
+    State.session.permissions = res.permissions || State.session.permissions;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(State.session));
 
     setText("rtName", State.settings.nama_rt || "RT");
     setText("appTitle", State.settings.app_name || "Buku KAS RT dan RMD");
-    if (!isGuest) {
-      setText("activeUserName", State.session.user.nama || State.session.user.username);
-      setText("activeUserRole", roleLabel(State.session.user.role));
-    }
+    setText("activeUserName", State.session.user.nama || State.session.user.username);
+    setText("activeUserRole", roleLabel(State.session.user.role));
     fillPetugas();
     renderKasCategoryOptions();
     renderDashboard();
     applyPermissions();
-
-    // Backend sudah menyertakan laporan bulan berjalan di respons ini (lihat getInitialData_
-    // di Code.gs), jadi kalau filter laporan masih di posisi default (bulan ini), langsung
-    // pakai data ini tanpa request tambahan saat pengguna membuka halaman KAS/RMD.
-    if (res.kasReport && isDefaultMonthFilter_("kas")) {
-      State.kasReport = res.kasReport;
-      if (State.activePage === "kasPage") {
-        renderKasReport();
-      }
-    }
-    if (res.rmdReport && isDefaultMonthFilter_("rmd")) {
-      State.rmdReport = res.rmdReport;
-      if (State.activePage === "rmdPage") {
-        renderRmdReport();
-      }
-    }
   } catch (err) {
     showToast("Gagal memuat data: " + err.message, "error");
   }
-}
-
-function isDefaultMonthFilter_(prefix) {
-  const start = document.getElementById(prefix + "ReportStartMonth").value;
-  const end = document.getElementById(prefix + "ReportEndMonth").value;
-  const month = currentMonthKey();
-  return (!start || start === month) && (!end || end === month);
 }
 
 function renderKasCategoryOptions() {
@@ -472,7 +359,7 @@ async function saveKasTransaction() {
   setButtonLoading(btn, true, "Menyimpan...");
 
   try {
-    const res = await api({ action: "saveKasTransaction", token: sessionToken(), data: payload });
+    const res = await api({ action: "saveKasTransaction", token: State.session.token, data: payload });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal menyimpan KAS.", "error");
       return;
@@ -510,7 +397,7 @@ async function saveRmdTransaction() {
   setButtonLoading(btn, true, "Menyimpan...");
 
   try {
-    const res = await api({ action: "saveRmdTransaction", token: sessionToken(), data: payload });
+    const res = await api({ action: "saveRmdTransaction", token: State.session.token, data: payload });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal menyimpan RMD.", "error");
       return;
@@ -532,7 +419,7 @@ async function saveRmdTransaction() {
 
 async function loadDashboardOnly() {
   try {
-    const res = await api({ action: "getDashboard", token: sessionToken(), monthKey: currentMonthKey() });
+    const res = await api({ action: "getDashboard", token: State.session.token, monthKey: currentMonthKey() });
     if (res && res.status === "ok") {
       State.dashboard = res.dashboard || {};
       renderDashboard();
@@ -566,7 +453,7 @@ async function loadKasReport() {
   try {
     const res = await api({
       action: "getKasReport",
-      token: sessionToken(),
+      token: State.session.token,
       startMonthKey: range.startMonthKey,
       endMonthKey: range.endMonthKey
     });
@@ -591,7 +478,7 @@ async function loadRmdReport() {
   try {
     const res = await api({
       action: "getRmdReport",
-      token: sessionToken(),
+      token: State.session.token,
       startMonthKey: range.startMonthKey,
       endMonthKey: range.endMonthKey
     });
@@ -702,7 +589,7 @@ async function deleteTransaction(moduleName, idTransaksi) {
 
   try {
     const action = moduleName === "RMD" ? "deleteRmdTransaction" : "deleteKasTransaction";
-    const res = await api({ action: action, token: sessionToken(), id_transaksi: idTransaksi });
+    const res = await api({ action: action, token: State.session.token, id_transaksi: idTransaksi });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal menghapus transaksi.", "error");
       return;
@@ -726,7 +613,7 @@ async function loadUsers() {
   }
 
   try {
-    const res = await api({ action: "getUsers", token: sessionToken() });
+    const res = await api({ action: "getUsers", token: State.session.token });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal memuat user.", "error");
       return;
@@ -757,7 +644,7 @@ async function saveUser() {
   setButtonLoading(btn, true, "Menyimpan...");
 
   try {
-    const res = await api({ action: "saveUser", token: sessionToken(), data: payload });
+    const res = await api({ action: "saveUser", token: State.session.token, data: payload });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal menyimpan user.", "error");
       return;
@@ -839,7 +726,7 @@ function editUser(idUser) {
 
 async function toggleUser(idUser, aktif) {
   try {
-    const res = await api({ action: "toggleUser", token: sessionToken(), id_user: idUser, aktif: aktif });
+    const res = await api({ action: "toggleUser", token: State.session.token, id_user: idUser, aktif: aktif });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal mengubah status user.", "error");
       return;
@@ -866,7 +753,7 @@ async function deleteUser(idUser) {
   }
 
   try {
-    const res = await api({ action: "deleteUser", token: sessionToken(), id_user: idUser });
+    const res = await api({ action: "deleteUser", token: State.session.token, id_user: idUser });
     if (!res || res.status !== "ok") {
       showToast(res && res.message ? res.message : "Gagal menghapus user.", "error");
       return;

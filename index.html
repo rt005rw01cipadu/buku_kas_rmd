@@ -10,17 +10,16 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Modal login: dipakai petugas untuk masuk, warga tidak wajib login -->
-  <div id="loginModal" class="modal-overlay">
-    <div class="modal-card">
-      <button id="btnCloseLogin" class="modal-close" type="button" aria-label="Tutup">&times;</button>
-      <div class="modal-brand">
+  <section id="loginPage" class="login-page active">
+    <div class="login-shell">
+      <div class="login-brand">
         <img src="logo-rt.png" alt="Logo RT 005 RW 01" class="brand-logo brand-logo-login">
-        <h1>Login Petugas</h1>
+        <h1>Buku KAS dan RMD</h1>
         <p class="eyebrow">Maju Bersama Kita Bisa</p>
+        <!--p>Frontend bisa berjalan dari local server atau GitHub Pages. Data tersimpan di Google Sheet.</p-->
       </div>
 
-      <form id="loginForm" class="login-card modal-login-card">
+      <form id="loginForm" class="login-card">
         <div id="loginError" class="alert"></div>
         <label>
           Username
@@ -31,12 +30,12 @@
           <input id="loginPassword" type="password" autocomplete="current-password" placeholder="password" required>
         </label>
         <button id="btnLogin" class="btn btn-primary" type="submit">Masuk</button>
-        <div class="login-note">Login hanya diperlukan untuk petugas (input transaksi, hapus data, atau kelola user). Warga dapat melihat laporan tanpa login.</div>
+        <div class="login-note">Default: warga / warga. Hanya bisa melihat laporan KAS dan Piranti RMD.</div>
       </form>
     </div>
-  </div>
+  </section>
 
-  <section id="appPage" class="app-page active">
+  <section id="appPage" class="app-page">
     <header class="topbar">
       <div class="topbar-brand">
         <img src="logo-rt.png" alt="Logo RT 005 RW 01" class="brand-logo brand-logo-header">
@@ -45,11 +44,7 @@
           <h1 id="appTitle">Buku KAS dan RMD</h1>
         </div>
       </div>
-      <div id="guestPill" class="guest-pill">
-        <span class="guest-label">Mode Warga · Lihat Laporan</span>
-        <button id="btnOpenLogin" class="btn btn-light btn-mini" type="button">Login Petugas</button>
-      </div>
-      <div id="userPill" class="user-pill" style="display:none;">
+      <div class="user-pill">
         <div>
           <strong id="activeUserName">-</strong>
           <span id="activeUserRole">-</span>
@@ -72,12 +67,12 @@
             <h2>Dashboard</h2>
             <p>Ringkasan saldo KAS RT dan RMD bulan berjalan.</p>
           </div>
-          <button id="btnRefresh" class="btn btn-light" type="button" onclick="window.location.reload();">Muat Ulang</button>
+          <button id="btnRefresh" class="btn btn-light" type="button">Muat Ulang</button>
         </div>
 
         <div class="stat-grid">
           <div class="stat-card">
-            <span>Total Saldo (KAS + RMD)</span>
+            <span>Total Saldo</span>
             <strong id="dashTotalSaldo">Rp 0</strong>
           </div>
           <div class="stat-card">
@@ -127,11 +122,6 @@
             <h2>KAS RT</h2>
             <p>Catat pemasukan, pengeluaran, dan laporan KAS RT.</p>
           </div>
-        </div>
-
-        <div id="kasGuestHint" class="card guest-hint" data-permission-guest="input">
-          <p>🔒 Login sebagai petugas untuk input transaksi KAS RT.</p>
-          <button class="btn btn-light btn-mini" type="button" data-open-login>Login Petugas</button>
         </div>
 
         <form id="kasForm" class="card form-grid" data-permission="input">
@@ -224,11 +214,6 @@
             <h2>RMD</h2>
             <p>Rumah Masa Depan untuk pembelian kain kafan saat warga terkena musibah.</p>
           </div>
-        </div>
-
-        <div id="rmdGuestHint" class="card guest-hint" data-permission-guest="input">
-          <p>🔒 Login sebagai petugas untuk input transaksi RMD.</p>
-          <button class="btn btn-light btn-mini" type="button" data-open-login>Login Petugas</button>
         </div>
 
         <form id="rmdForm" class="card form-grid" data-permission="input">
