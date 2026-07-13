@@ -329,11 +329,22 @@ function goPage(pageId, skipLoad) {
   });
 
   if (!skipLoad) {
-    if (pageId === "kasPage" && !State.kasReport) {
-      loadKasReport();
+    if (pageId === "kasPage") {
+      // Kalau data laporan bulan berjalan sudah ada dari getInitialData tapi belum
+      // pernah dirender (karena saat itu halaman aktifnya bukan kasPage), render
+      // sekarang. Kalau belum ada sama sekali, baru fetch ke server.
+      if (State.kasReport) {
+        renderKasReport();
+      } else {
+        loadKasReport();
+      }
     }
-    if (pageId === "rmdPage" && !State.rmdReport) {
-      loadRmdReport();
+    if (pageId === "rmdPage") {
+      if (State.rmdReport) {
+        renderRmdReport();
+      } else {
+        loadRmdReport();
+      }
     }
     if (pageId === "userPage" && !State.users.length) {
       loadUsers();
