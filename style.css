@@ -229,15 +229,14 @@ input:disabled {
   align-items: center;
 }
 
-/* Ringkasan saldo saat ini: tampil di atas nav, sama di halaman KAS maupun RMD,
-   supaya warga langsung lihat sisa saldo tanpa perlu filter atau klik apa pun. */
+/* Ringkasan saldo saat ini: tampil di bawah menu nav (di dalam .container),
+   sama di halaman KAS maupun RMD, supaya warga langsung lihat sisa saldo
+   tanpa perlu filter atau klik apa pun. */
 .balance-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 18px 24px 0;
+  margin-bottom: 20px;
 }
 
 .balance-card {
@@ -279,24 +278,10 @@ input:disabled {
   color: var(--blue);
 }
 
-.balance-card.total {
-  border-left-color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.balance-card.total strong {
-  color: var(--primary-dark);
-}
-
 @media (max-width: 620px) {
   .balance-strip {
     grid-template-columns: 1fr 1fr;
-    padding: 14px 16px 0;
     gap: 10px;
-  }
-
-  .balance-card.total {
-    grid-column: 1 / -1;
   }
 
   .balance-card strong {

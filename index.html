@@ -58,21 +58,6 @@
       </div>
     </header>
 
-    <section class="balance-strip" aria-label="Ringkasan saldo saat ini">
-      <div class="balance-card kas">
-        <span class="balance-label">Saldo KAS RT</span>
-        <strong id="balanceKasNow">Rp 0</strong>
-      </div>
-      <div class="balance-card rmd">
-        <span class="balance-label">Saldo Piranti RMD</span>
-        <strong id="balanceRmdNow">Rp 0</strong>
-      </div>
-      <!--div class="balance-card total">
-        <span class="balance-label">Total Saldo</span>
-        <strong id="balanceTotalNow">Rp 0</strong>
-      </div-->
-    </section>
-
     <nav class="nav">
       <button class="nav-item active" type="button" data-page="kasPage">KAS RT</button>
       <button class="nav-item" type="button" data-page="rmdPage">RMD</button>
@@ -80,6 +65,17 @@
     </nav>
 
     <main class="container">
+      <section class="balance-strip" aria-label="Ringkasan saldo saat ini">
+        <div class="balance-card kas">
+          <span class="balance-label">Saldo Akhir KAS RT</span>
+          <strong id="balanceKasNow">Rp 0</strong>
+        </div>
+        <div class="balance-card rmd">
+          <span class="balance-label">Saldo Akhir Piranti RMD</span>
+          <strong id="balanceRmdNow">Rp 0</strong>
+        </div>
+      </section>
+
       <section id="kasPage" class="page-section active">
         <div class="toolbar">
           <div>

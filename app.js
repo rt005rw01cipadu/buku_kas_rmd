@@ -439,7 +439,7 @@ function renderKasCategoryOptions() {
 }
 
 function renderDashboard() {
-  // Mengisi strip saldo saat ini yang selalu tampil di atas nav (lihat index.html),
+  // Mengisi strip saldo saat ini yang tampil di bawah nav (lihat index.html),
   // supaya warga langsung melihat sisa saldo KAS RT & RMD tanpa perlu filter apa pun.
   const d = State.dashboard || {};
   const kas = d.kas || {};
@@ -447,7 +447,6 @@ function renderDashboard() {
 
   setText("balanceKasNow", rupiah(kas.saldo_sekarang || 0));
   setText("balanceRmdNow", rupiah(rmd.saldo_sekarang || 0));
-  setText("balanceTotalNow", rupiah(d.total_saldo || 0));
 }
 
 async function saveKasTransaction() {
