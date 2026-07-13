@@ -428,32 +428,15 @@ function renderKasCategoryOptions() {
 }
 
 function renderDashboard() {
+  // Mengisi strip saldo saat ini yang selalu tampil di atas nav (lihat index.html),
+  // supaya warga langsung melihat sisa saldo KAS RT & RMD tanpa perlu filter apa pun.
   const d = State.dashboard || {};
   const kas = d.kas || {};
   const rmd = d.rmd || {};
 
-  setText("dashTotalSaldo", rupiah(d.total_saldo || 0));
-  setText("dashSaldoKas", rupiah(kas.saldo_sekarang || 0));
-  setText("dashSaldoRmd", rupiah(rmd.saldo_sekarang || 0));
-  setText("dashTotalTransaksi", numberFormat(d.total_transaksi || 0));
-  setText("dashKasMasuk", rupiah(kas.total_masuk_bulan || 0));
-  setText("dashKasKeluar", rupiah(kas.total_keluar_bulan || 0));
-  setText("dashRmdMasuk", rupiah(rmd.total_masuk_bulan || 0));
-  setText("dashRmdKeluar", rupiah(rmd.total_keluar_bulan || 0));
-
-  const list = document.getElementById("recentTransactions");
-  if (!list) {
-    return;
-  }
-  const recent = d.recent || [];
-  if (!recent.length) {
-    list.innerHTML = '<div class="empty">Belum ada transaksi.</div>';
-    return;
-  }
-
-  list.innerHTML = recent.map(function (item) {
-    return transactionCard(item, item.module || "KAS");
-  }).join("");
+  setText("balanceKasNow", rupiah(kas.saldo_sekarang || 0));
+  setText("balanceRmdNow", rupiah(rmd.saldo_sekarang || 0));
+  setText("balanceTotalNow", rupiah(d.total_saldo || 0));
 }
 
 async function saveKasTransaction() {

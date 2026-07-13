@@ -229,6 +229,81 @@ input:disabled {
   align-items: center;
 }
 
+/* Ringkasan saldo saat ini: tampil di atas nav, sama di halaman KAS maupun RMD,
+   supaya warga langsung lihat sisa saldo tanpa perlu filter atau klik apa pun. */
+.balance-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 24px 0;
+}
+
+.balance-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 20px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+
+.balance-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.balance-card strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.balance-card.kas {
+  border-left-color: var(--green);
+}
+
+.balance-card.kas strong {
+  color: var(--green);
+}
+
+.balance-card.rmd {
+  border-left-color: var(--blue);
+}
+
+.balance-card.rmd strong {
+  color: var(--blue);
+}
+
+.balance-card.total {
+  border-left-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.balance-card.total strong {
+  color: var(--primary-dark);
+}
+
+@media (max-width: 620px) {
+  .balance-strip {
+    grid-template-columns: 1fr 1fr;
+    padding: 14px 16px 0;
+    gap: 10px;
+  }
+
+  .balance-card.total {
+    grid-column: 1 / -1;
+  }
+
+  .balance-card strong {
+    font-size: 19px;
+  }
+}
+
 .topbar h1,
 .toolbar h2,
 .card h3,
